@@ -4,15 +4,19 @@ type
   MyObj = ref object
     x: int
 
-var q = newSCQueue[MyObj]()
+var q = newRoonyQueue[MyObj]()
 
-var obj = MyObj(x: 1)
-var obj2 = MyObj(x: 2)
+echo repr q.pop
 
-echo repr q.pop()
-echo q.push obj
-echo repr q.pop()
-echo q.push obj2
-echo repr q.pop()
-echo repr q.pop()
-echo repr q.pop()
+var counter1: int
+for i in 0..<1_000:
+  var obj = MyObj(x: i)
+  if q.push obj:
+    inc counter1
+echo counter1
+
+var counter: int
+while q.pop != nil:
+  inc counter
+
+echo counter
