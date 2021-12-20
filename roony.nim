@@ -34,12 +34,17 @@ proc push*[T; N](sq: RoonyQueue[T, N]; val: T): bool {.discardable.} =
     sq.aq().push(eidx, false)
     result = true
 
-proc pop*[T; N](sq: RoonyQueue[T, N]): T =
+proc pop*[T; N](sq: RoonyQueue[T, N], clear: static bool = false): T =
   ## Pop an item off the queue. Nil is returned if the queue is empty and must be
   ## handled in user code.
+  ## By default, there is no reason for the item to be cleared from the slot
+  ## since the queue uses indirection to give access to slots and their items.
+  ## However, this must be forced when the object is a ref so that the ref count
+  ## is *more* correct (requires atomic ref count to be truly correct). Users
+  ## can also force this by setting the arg 'clear' to true.
   var eidx = sq.aq().pop(false)
   if eidx != high(uint):
     result = sq.val[eidx]
-    when T is ref:
+    when clear or T is ref:
       sq.val[eidx] = nil
     sq.fq().push(eidx, true)
