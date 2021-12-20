@@ -8,9 +8,5 @@ Have only just implemented a satisfactory working architecture on a single threa
 
 - [x] works single thread
   - [x] Create test
-- [ ] works SPSC
-  - [ ] Create test
-- [ ] works SPMC
-  - [ ] Create test
-- [ ] works MPMC
-  - [ ] Create test
+- [x] works MPMC
+  - [x] Create test

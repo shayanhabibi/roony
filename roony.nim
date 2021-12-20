@@ -4,27 +4,32 @@ import roony/spec
 
 type
   RingQueue[T; N: static uint] = object
+    ## Naive Ring Queue
     head {.align(128).}: Atomic[uint]
     threshold {.align(128).}: Atomic[int]
     tail {.align(128).}: Atomic[uint]
     arr {.align(128).}: array[N, Atomic[uint]]
 
   RoonyQueue*[T; N: static uint] = ref object
+    ## Bounded circular queue which uses indirection to store and access values
     aqo: RingQueue[T, N]
     fqo: RingQueue[T, N]
     val: array[N, T]
 
 proc newEmptyRingQueue[T](): auto =
+  ## Creates and initiates a Ring Queue in the empty state
   const sz = lfPow(rqOrder + 1)
   
   result = RingQueue[T, sz]()
 
-  for i,x in result.arr:  # init every idx in the array as -1
+  for i,x in result.arr:
+    # Every index in the array is initialised as empty (all bits set)
     result.arr[i].store(cast[uint](-1))
   
   result.threshold.store(-1)  # Init the threshold
 
 proc newFullRingQueue[T](): auto =
+  ## Creates and initiates a Ring Queue in the full state
   const half: uint = lfPow(rqOrder)
   const n = half * 2
   
@@ -129,17 +134,24 @@ proc pop[T; N](rq: var RingQueue[T, N]; nonempty: bool): uint =
         return high(uint)
 
 proc newRoonyQueue*[T](): auto =
+  ## Create and initialise a RoonyQueue.
   doAssert sizeof(T) <= 8, "Queue can only handle pointers or objects less than or equal to 8 bytes"
   const sz = 1u shl (rqOrder + 1)
-  result = RoonyQueue[T, sz](
-    aqo: newEmptyRingQueue[T](),
-    fqo: newFullRingQueue[T]()
-  )
 
+  result =
+    RoonyQueue[T, sz](
+      aqo: newEmptyRingQueue[T](),
+      fqo: newFullRingQueue[T]()
+    )
+
+# ----------------------------------------- #
+# Accessors to internal ring queues as vars #
 proc fq[T; N](sq: RoonyQueue[T, N]): var RingQueue[T, N] = sq.fqo
 proc aq[T; N](sq: RoonyQueue[T, N]): var RingQueue[T, N] = sq.aqo
+# ----------------------------------------- #
 
 proc push*[T; N](sq: RoonyQueue[T, N]; val: T): bool {.discardable.} =
+  ## Push an item (val) onto the queue. False is returned if the queue is full.
   var eidx = sq.fq().pop(true)
   if eidx == high(uint):
     result = false
@@ -149,7 +161,11 @@ proc push*[T; N](sq: RoonyQueue[T, N]; val: T): bool {.discardable.} =
     result = true
 
 proc pop*[T; N](sq: RoonyQueue[T, N]): T =
+  ## Pop an item off the queue. Nil is returned if the queue is empty and must be
+  ## handled in user code.
   var eidx = sq.aq().pop(false)
   if eidx != high(uint):
-    result = cast[T](cast[ptr uint](sq.val[eidx].addr).atomicExchangeN(0u, ATOMIC_ACQ_REL))
+    result = sq.val[eidx]
+    when T is ref:
+      sq.val[eidx] = nil
     sq.fq().push(eidx, true)

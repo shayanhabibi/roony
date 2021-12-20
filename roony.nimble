@@ -1,4 +1,4 @@
 version = "0.1.0"
-author = "cabboose"
-description = ""
+author = "Shayan Habibi"
+description = "Pure nim implementation of the bounded circular LFQueue"
 license = "MIT"
